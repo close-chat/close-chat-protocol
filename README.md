@@ -101,9 +101,7 @@ impl Default for Markets {
 ```
 
 Pro's:
-Markup: 
-  * Unordered sub-list. 
-All messages stored on-chain
+  * All messages stored on-chain
   * Completely unstoppable
   * App operator has minimal power
   * Could chat without the need of operators
@@ -113,7 +111,6 @@ Con's:
 
 ### Phase 1: Double encrypted messaging
 Pro's:
-Markup: 
   * All are encrypted when send stored on chain, so the messages are private
   * Unstoppable in the sense that the storage and addition of encrypted messages is unstoppable
 Con's: 	
@@ -123,7 +120,5 @@ Con's:
 
 
 ### Phase 2: Completely unstopable messaging protocol
-
-Markup: 
   * Option 1: Host the messaging app on IPFS & open-source it, this way users are ensured that their app doesn't have a backdoor
   * Option 2: Reseach a way to do decryption trustlessly on-chain, where only channel participants are able to decrypt and retrieve messages they send to eachother. 
