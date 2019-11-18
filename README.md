@@ -100,22 +100,22 @@ impl Default for Markets {
 }
 ```
 
-Pro's:
+Pros:
   * All messages stored on-chain
   * Completely unstoppable
   * App operator has minimal power
   * Could chat without the need of operators
 
-Con's: 	
+Cons: 	
   * All messages and recipients could be tracked through block-explorer
   * Only pseudonymous
 
 ### Phase 1: Double encrypted messaging
-Pro's:
+Pros:
   * All messages are encrypted when send stored on chain, so the messages are private
   * Unstoppable in the sense that the storage and addition of encrypted messages is unstoppable
 
-Con's: 	
+Cons: 	
   * Puts a lòt of power in app developers hands
   * Need to give each user some sort of private key so that they are able to decrypt their messages even if app (opperator) gets shut down
   * App developers can still be easily shut down, build in backdoors
