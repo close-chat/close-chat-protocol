@@ -101,23 +101,29 @@ impl Default for Markets {
 ```
 
 Pro's:
-Markup: * All messages stored on-chain
-		* Completely unstoppable
-		* App operator has minimal power
-		* Could chat without the need of operators
-Con's: 	* All messages and recipients could be tracked through block-explorer
-		* Only pseudonymous
+Markup: 
+  * Unordered sub-list. 
+All messages stored on-chain
+  * Completely unstoppable
+  * App operator has minimal power
+  * Could chat without the need of operators
+Con's: 	
+  * All messages and recipients could be tracked through block-explorer
+  * Only pseudonymous
 
 ### Phase 1: Double encrypted messaging
 Pro's:
-Markup: * All are encrypted when send stored on chain, so the messages are private
-		* Unstoppable in the sense that the storage and addition of encrypted messages is unstoppable
-Con's: 	* Puts a lòt of power in app developers hands
-		* Need to give each user some sort of private key so that they are able to decrypt their messages even if app (opperator) gets shut down
-		* App developers can still be easily shut down, build in backdoors
+Markup: 
+  * All are encrypted when send stored on chain, so the messages are private
+  * Unstoppable in the sense that the storage and addition of encrypted messages is unstoppable
+Con's: 	
+  * Puts a lòt of power in app developers hands
+  * Need to give each user some sort of private key so that they are able to decrypt their messages even if app (opperator) gets shut down
+  * App developers can still be easily shut down, build in backdoors
 
 
 ### Phase 2: Completely unstopable messaging protocol
 
-Markup: * Option 1: Host the messaging app on IPFS & open-source it, this way users are ensured that their app doesn't have a backdoor
-		* Option 2: Reseach a way to do decryption trustlessly on-chain, where only channel participants are able to decrypt and retrieve messages they send to eachother. 
+Markup: 
+  * Option 1: Host the messaging app on IPFS & open-source it, this way users are ensured that their app doesn't have a backdoor
+  * Option 2: Reseach a way to do decryption trustlessly on-chain, where only channel participants are able to decrypt and retrieve messages they send to eachother. 
