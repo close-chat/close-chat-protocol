@@ -1,7 +1,7 @@
-## Getting Started
+## Libsignal API example
 Heavily influenced by Akash Singh's example: [https://github.com/akash4393/libsignal-javascript-example](https://github.com/akash4393/libsignal-javascript-example)
 
-### How to Run
+### Installing
 
 * Clone repository
 * Install dependencies
@@ -18,5 +18,5 @@ Heavily influenced by Akash Singh's example: [https://github.com/akash4393/libsi
 	npm start
 	```
 
-### How to Use
+### Running the example
 Go to http://localhost:3000
