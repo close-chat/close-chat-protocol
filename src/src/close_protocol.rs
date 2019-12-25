@@ -2,14 +2,14 @@ use std::string::String;
 use near_bindgen::{near_bindgen, env};
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap};
 
 #[near_bindgen]
 #[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
 struct User {
 	username: String,
-	tg_pub_key: String,
-	signal_pub_key: String
+	tg_pub_key: Option<String>,
+	signal_pub_key: Option<String>
 }
 
 #[near_bindgen]
@@ -21,6 +21,37 @@ struct CloseProtocol {
 #[near_bindgen]
 impl CloseProtocol {
 
+	// TODO: Signal_pub_key isn't actually optional but needs to be implemented better on frontend before making it required
+	pub fn add_user(&mut self, username: String, tg_pub_key: Option<String>, signal_pub_key: Option<String>) -> bool{
+		let user = User { 
+			username: username.to_string(), 
+			tg_pub_key, 
+			signal_pub_key
+		};
+		let unique_username = self.users.get(&username).is_none();
+
+		if unique_username {
+			self.users.insert(username, user);
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+
+	pub fn get_users(&self, username: String) -> &HashMap<String, User> {
+		return &self.users;
+	}
+
+	pub fn get_user(&self, username: String) -> &User {
+		let user = self.users.get(&username).unwrap();
+		return user;
+	}
+
+	pub fn is_unique_username(&self, username: String) -> bool {
+		let unique_username = self.users.get(&username).is_none();
+		return unique_username;
+	}
 }
 
 impl Default for CloseProtocol {
@@ -55,5 +86,25 @@ mod tests {
             random_seed: vec![0, 1, 2],
             output_data_receivers: vec![],
 		}
+	}
+
+    #[test]
+	fn test_contract_creation() {
+		let username = "carol.near";
+		testing_env!(get_context(username.to_string()), Config::default());
+		let mut contract = CloseProtocol::default();
+		
+		
+		let success = contract.add_user(username.to_string(), None, None);
+		assert_eq!(success, true);
+
+		let users = contract.get_users(username.to_string());
+		let user = contract.get_user(username.to_string());
+
+		println!("user_list: {:?}", users);
+		println!("user: {:?}", user);
+
+		
+
 	}
 }
