@@ -9,10 +9,10 @@ use std::collections::{HashMap};
 struct User {
 	username: String,
 	tg_pub_key: Option<String>,
-	signal_pub_key: Option<String>
+	signal_pub_key: Option<String>,
+	account_owner: String
 }
 
-#[near_bindgen]
 #[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
 struct CloseProtocol {
 	users: HashMap<String, User>
@@ -26,7 +26,8 @@ impl CloseProtocol {
 		let user = User { 
 			username: username.to_string(), 
 			tg_pub_key, 
-			signal_pub_key
+			signal_pub_key,
+			account_owner: env::predecessor_account_id()
 		};
 		let unique_username = self.users.get(&username).is_none();
 
@@ -36,7 +37,6 @@ impl CloseProtocol {
 		} else {
 			return false;
 		}
-
 	}
 
 	pub fn get_users(&self, username: String) -> &HashMap<String, User> {
@@ -51,6 +51,30 @@ impl CloseProtocol {
 	pub fn is_unique_username(&self, username: String) -> bool {
 		let unique_username = self.users.get(&username).is_none();
 		return unique_username;
+	}
+
+	pub fn modify_tg_pub_key(&mut self, username: String, tg_pub_key: String) -> bool{
+		let user = self.users.get(&username).unwrap();
+		if user.account_owner == env::predecessor_account_id() {
+			self.users.entry(username).and_modify(|entry| {
+				entry.tg_pub_key = Some(tg_pub_key)
+			});
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	pub fn modify_sg_pub_key(&mut self, username: String, signal_pub_key: String) -> bool{
+		let user = self.users.get(&username).unwrap();
+		if user.account_owner == env::predecessor_account_id() {
+			self.users.entry(username).and_modify(|entry| {
+				entry.signal_pub_key = Some(signal_pub_key)
+			});
+			return true;
+		} else {
+			return false;
+		}
 	}
 }
 
