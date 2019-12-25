@@ -24,25 +24,40 @@ let contacts = []
 document.addEventListener('DOMContentLoaded', e => {
     generateResgistrationId(deviceId);
 });
-
+// 0. generateResgistrationId(deviceId: int)
+// 1. generateIdKey() -> promise
+// 2. generatePreKeys() -> promise
+// 3. generateSignedPreKeys() -> promise
+//      - Register with server
+//      - Send keys to server
+// 4. waitForRequestKeys() -> promise
+// 5. processReceivedKeys() -> promise
+// 6. waitForKeys(receivedKeys) 
+//      - setupSession(processedPreKeyObj, deviceId) -> promise
+// 7. sendMessageToServer(message, messageToObject) -> promise
+// 8. waitForMessageReceive(from) = eventListener
+// 9. getMessagesFromServer(from)
+// 10. processIncomingMessage(incomingMessageObj)
+// 11. arrBuffToBase64( buffer ) {
+// 12. _base64ToArrayBuffer(base64) 
 function generateResgistrationId(myDeviceId) {
     registrationId = KeyHelper.generateRegistrationId();
     myIdentifiers['registrationId'] = registrationId;
     myIdentifiers['deviceId'] = myDeviceId;
     store.put('registrationId', registrationId);
-    generateIdKey();
 }
 
-function generateIdKey() {
+const generateIdKey = () => new Promise((resolve, reject) => {
     KeyHelper.generateIdentityKeyPair().then(identityKeyPair => {
         idKeyPair = identityKeyPair;
         store.put('identityKey', idKeyPair);
-        generatePreKeys()
+        resolve();
     });
-}
+})
+
 
 // Generate multiple PreKeys (as per documentation)
-function generatePreKeys() {    
+const generatePreKeys = ()  => new Promise((resolve, reject) => {
     let listOfPreKeysPromise = [];
     for(let i = 0; i < numberOfPreKeys; i++){
         listOfPreKeysPromise.push(KeyHelper.generatePreKey(registrationId + i + 1));
@@ -61,11 +76,13 @@ function generatePreKeys() {
             };
             preKeyObjectsToSend.push(preKeyObjectToSend); 
         });
-        generateSignedPreKey();
-    });
-}
+        resolve()
+    });    
+})
 
-function generateSignedPreKey() {
+
+
+const generateSignedPreKey = () => new Promise((resolve, reject) => {
     KeyHelper.generateSignedPreKey(idKeyPair, registrationId - 1).then(signedPreKey => {
         signedPreKeyObject = {
             keyId: signedPreKey.keyId,
@@ -73,16 +90,11 @@ function generateSignedPreKey() {
             signature: signedPreKey.signature
         }
         store.storeSignedPreKey(signedPreKey.keyId, signedPreKeyObject.keyPair);
-        registerWithServer()
+        resolve()
     });
-}
+})
 
-
-function registerWithServer() {
-    sendKeysToServer();
-}
-
-function sendKeysToServer() {
+const sendKeysToServer = () => new Promise((resolve, reject) => {
     let url = serverBaseUrl + 'send';
     let requestObject = {
         type: 'init',
@@ -96,36 +108,31 @@ function sendKeysToServer() {
         },
         preKeys: preKeyObjectsToSend
     }
-
+    
     window.sendRequest(url, requestObject).then(res => {
         if(res.err) {
             console.error(res. err)
+            reject()
         } else {
-            waitForRequestKeys(res)
+            console.log(res)
+            resolve()
         }
     });
-}
+})
 
-function waitForRequestKeys() {
-
+const waitForRequestKeys = () => new Promise((resolve, reject) => {
     let requestObject = {
         registrationId: registrationId,
         deviceId: deviceId
     };
     let url = serverBaseUrl + 'get';
     window.sendRequest(url, requestObject).then(obj => {
-        processReceivedKeys(obj);
+        waitForKeys(obj);
+        resolve()
     })
-}
+    
+})
 
-
-function processReceivedKeys(resJson) {
-    if(resJson.err) {
-        console.error(res. err)
-    } else {
-        waitForKeys(resJson)
-    }
-}
 
 function waitForKeys(resData) {
     
@@ -145,7 +152,7 @@ function waitForKeys(resData) {
     setupSession(processPreKeyObject, resData.deviceId);
 }
 
-function setupSession(processPreKeyObject, incomingDeviceIdStr) {
+const setupSession = (processPreKeyObject, incomingDeviceIdStr) => new Promise((resolve, reject) => {
     let recipientAddress = new ls.SignalProtocolAddress(processPreKeyObject.registrationId, incomingDeviceIdStr);
     let sessionBuilder = new ls.SessionBuilder(store, recipientAddress);
     sessionBuilder.processPreKey(processPreKeyObject)
@@ -159,30 +166,17 @@ function setupSession(processPreKeyObject, incomingDeviceIdStr) {
             // waitForMessageSend();
             const message = new TextEncoder("utf-8").encode(rawMessageStr);
             const myContactIds = Object.keys(myContacts);
-
-            sendMessageToServer(message, myContacts[myContactIds[0]])
-
+                resolve()
+    
         }).catch(err => {
             console.error(err);
+            reject();
         });
-}
+})
 
-function waitForMessageSend() {
-    let rawMessageStr = "test";
-    let message = new TextEncoder("utf-8").encode(rawMessageStr);
-    const contactIds = Object.keys(myContacts);
-    let messageTo = myContacts[contactIds[0]];
-    if(message && messageTo) {
-        sendMessageToServer(message, messageTo)
-    } else {
-        console.error('Invalid To or Message entry. Please check the fields');
-    }
-}
-
-
-function sendMessageToServer(message, messageToObject) {
+const sendMessageToServer = (message, messageToObject)  => new Promise((resolve, reject) => {
     let url = serverBaseUrl + 'send/message';
-
+    
     let requestObject = {
         messageTo: {
             registrationId: messageToObject.preKeyObject.registrationId,
@@ -198,59 +192,57 @@ function sendMessageToServer(message, messageToObject) {
     let signalMessageToAddress = new ls.SignalProtocolAddress(requestObject.messageTo.registrationId, 
         requestObject.messageTo.deviceId);
     let sessionCipher = new ls.SessionCipher(store, signalMessageToAddress);
-
+    
     sessionCipher.encrypt(message).then(ciphertext => {
         requestObject.ciphertextMessage = ciphertext;
         window.sendRequest(url, requestObject).then(res => {
             if(res.err) {
                 console.error(res.err);
+                resolve()
             } else {
                 console.log('Message succesfully sent to server');
-
-                waitForMessageReceive(requestObject.messageFrom)
+                reject()
             }
         });
     }).catch(err => {
-        console.error(res.err);
+        console.error(err);
+        reject()
     });
-}
+    
+})
 
-function waitForMessageReceive(from) {
-    if(from) {
-        getMessagesFromServer(from);
-    } else {
-        getMessagesFromServer();
-    }
-}
-
-function getMessagesFromServer(messageFrom) {
+const getMessagesFromServer = (messageFrom) => new Promise( async (resolve, reject) => {
     let url = serverBaseUrl + 'get/message';
     let messageFromUniqueId = messageFrom.registrationId.toString() + messageFrom.deviceId.toString(); 
-
+    
     let requestObject = {
         messageTo: myIdentifiers,
         messageFromUniqueId: messageFromUniqueId
     };
-
+    
     window.sendRequest(url, requestObject).then(res => {
         if(res.err) {
             console.error(res.err);
+            reject()
         } else {
-            processIncomingMessage(res);
+            const message  = await processIncomingMessage(res);
+            resolve(message);
         }
     })
-}
+})
 
-function processIncomingMessage(incomingMessageObj) {
+const processIncomingMessage = (incomingMessageObj) =>  new Promise((resolve, reject) => {
     let signalMessageFromAddress = new ls.SignalProtocolAddress(incomingMessageObj.messageFrom.registrationId, incomingMessageObj.messageFrom.deviceId);
     let sessionCipher = new ls.SessionCipher(store, signalMessageFromAddress); 
     sessionCipher.decryptPreKeyWhisperMessage(incomingMessageObj.ciphertextMessage.body, 'binary').then(plaintext => {
         let decryptedMessage = window.util.toString(plaintext);
         console.log("message received: ", decryptedMessage)
+        resolve(decryptedMessage);
     }).catch(err => {
         console.error(err);
+        reject(err);
     });
-}
+})
 
 
 function arrBuffToBase64( buffer ) {
