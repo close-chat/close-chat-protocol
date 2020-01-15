@@ -21,26 +21,7 @@ let myContacts = {};
 // List element to display saved contacts
 let contacts = []
 
-document.addEventListener('DOMContentLoaded', e => {
-    generateResgistrationId(deviceId);
-});
-// 0. generateResgistrationId(deviceId: int)
-// 1. generateIdKey() -> promise
-// 2. generatePreKeys() -> promise
-// 3. generateSignedPreKeys() -> promise
-//      - Register with server
-//      - Send keys to server
-// 4. waitForRequestKeys() -> promise
-// 5. processReceivedKeys() -> promise
-// 6. waitForKeys(receivedKeys) 
-//      - setupSession(processedPreKeyObj, deviceId) -> promise
-// 7. sendMessageToServer(message, messageToObject) -> promise
-// 8. waitForMessageReceive(from) = eventListener
-// 9. getMessagesFromServer(from)
-// 10. processIncomingMessage(incomingMessageObj)
-// 11. arrBuffToBase64( buffer ) {
-// 12. _base64ToArrayBuffer(base64) 
-function generateResgistrationId(myDeviceId) {
+function generateRegistrationId(myDeviceId) {
     registrationId = KeyHelper.generateRegistrationId();
     myIdentifiers['registrationId'] = registrationId;
     myIdentifiers['deviceId'] = myDeviceId;
@@ -57,12 +38,12 @@ const generateIdKey = () => new Promise((resolve, reject) => {
 
 
 // Generate multiple PreKeys (as per documentation)
-const generatePreKeys = ()  => new Promise((resolve, reject) => {
+const generatePreKeys = ()  => new Promise(async (resolve, reject) => {
     let listOfPreKeysPromise = [];
     for(let i = 0; i < numberOfPreKeys; i++){
         listOfPreKeysPromise.push(KeyHelper.generatePreKey(registrationId + i + 1));
     }
-    Promise.all(listOfPreKeysPromise).then(preKeys => {
+    await Promise.all(listOfPreKeysPromise).then(preKeys => {
         preKeys.forEach(preKey => {
             let preKeyObject = {
                 keyId: preKey.keyId,
@@ -76,20 +57,22 @@ const generatePreKeys = ()  => new Promise((resolve, reject) => {
             };
             preKeyObjectsToSend.push(preKeyObjectToSend); 
         });
-        resolve()
-    });    
+    });  
+  
+    resolve()
 })
 
 
 
-const generateSignedPreKey = () => new Promise((resolve, reject) => {
-    KeyHelper.generateSignedPreKey(idKeyPair, registrationId - 1).then(signedPreKey => {
+const generateSignedPreKeys = () => new Promise((resolve, reject) => {
+    KeyHelper.generateSignedPreKey(idKeyPair, registrationId - 1).then(async signedPreKey => {
         signedPreKeyObject = {
             keyId: signedPreKey.keyId,
             keyPair: signedPreKey.keyPair,
             signature: signedPreKey.signature
         }
         store.storeSignedPreKey(signedPreKey.keyId, signedPreKeyObject.keyPair);
+        await sendKeysToServer();
         resolve()
     });
 })
@@ -126,8 +109,9 @@ const waitForRequestKeys = () => new Promise((resolve, reject) => {
         deviceId: deviceId
     };
     let url = serverBaseUrl + 'get';
-    window.sendRequest(url, requestObject).then(obj => {
-        waitForKeys(obj);
+    window.sendRequest(url, requestObject).then(async obj => {
+        console.log(obj);
+        await waitForKeys(obj);
         resolve()
     })
     
@@ -135,21 +119,27 @@ const waitForRequestKeys = () => new Promise((resolve, reject) => {
 
 
 function waitForKeys(resData) {
+    return new Promise( async (resolve, reject) => {
+        let processPreKeyObject = {
+            registrationId: resData.registrationId,
+            identityKey: _base64ToArrayBuffer(resData.identityKey),
+            signedPreKey: {
+                keyId: resData.signedPreKey.id,
+                publicKey:  _base64ToArrayBuffer(resData.signedPreKey.key),
+                signature:  _base64ToArrayBuffer(resData.signedPreKey.signature),
+            },
+            preKey: {
+                keyId: resData.preKey.id,
+                publicKey:  _base64ToArrayBuffer(resData.preKey.key)
+            }
+        };
+
+        console.log(processPreKeyObject)
+        await setupSession(processPreKeyObject, resData.deviceId);
+        resolve();
+    })
     
-    let processPreKeyObject = {
-        registrationId: resData.registrationId,
-        identityKey: window.base64ToArrBuff(resData.identityKey),
-        signedPreKey: {
-            keyId: resData.signedPreKey.id,
-            publicKey:  window.base64ToArrBuff(resData.signedPreKey.key),
-            signature:  window.base64ToArrBuff(resData.signedPreKey.signature),
-        },
-        preKey: {
-            keyId: resData.preKey.id,
-            publicKey:  window.base64ToArrBuff(resData.preKey.key)
-        }
-    };
-    setupSession(processPreKeyObject, resData.deviceId);
+    
 }
 
 const setupSession = (processPreKeyObject, incomingDeviceIdStr) => new Promise((resolve, reject) => {
@@ -198,10 +188,10 @@ const sendMessageToServer = (message, messageToObject)  => new Promise((resolve,
         window.sendRequest(url, requestObject).then(res => {
             if(res.err) {
                 console.error(res.err);
-                resolve()
+                reject()
             } else {
                 console.log('Message succesfully sent to server');
-                reject()
+                resolve()
             }
         });
     }).catch(err => {
@@ -213,14 +203,15 @@ const sendMessageToServer = (message, messageToObject)  => new Promise((resolve,
 
 const getMessagesFromServer = (messageFrom) => new Promise( async (resolve, reject) => {
     let url = serverBaseUrl + 'get/message';
-    let messageFromUniqueId = messageFrom.registrationId.toString() + messageFrom.deviceId.toString(); 
+    console.log(messageFrom);
+    let messageFromUniqueId = messageFrom.preKeyObject.registrationId.toString() + messageFrom.deviceId.toString(); 
     
     let requestObject = {
         messageTo: myIdentifiers,
         messageFromUniqueId: messageFromUniqueId
     };
     
-    window.sendRequest(url, requestObject).then(res => {
+    window.sendRequest(url, requestObject).then(async res => {
         if(res.err) {
             console.error(res.err);
             reject()
@@ -263,3 +254,33 @@ function _base64ToArrayBuffer(base64) {
 	}
 	return bytes.buffer;
 }
+
+// 0. generateRegistrationId(deviceId: int)
+// 1. generateIdKey() -> promise
+// 2. generatePreKeys() -> promise
+// 3. generateSignedPreKeys() -> promise
+//      - Register with server
+//      - Send keys to server
+// 4. waitForRequestKeys() -> promise
+    // 5. processReceivedKeys() -> promise
+    // 6. waitForKeys(receivedKeys) 
+    //      - setupSession(processedPreKeyObj, deviceId) -> promise
+// 7. sendMessageToServer(message, messageToObject) -> promise
+// 8. waitForMessageReceive(from) = eventListener
+// 9. getMessagesFromServer(from)
+// 10. processIncomingMessage(incomingMessageObj)
+// 11. arrBuffToBase64( buffer ) {
+// 12. _base64ToArrayBuffer(base64) 
+
+
+document.addEventListener('DOMContentLoaded', async e => {
+    generateRegistrationId(123);
+    await generateIdKey();
+    await generatePreKeys();
+    await generateSignedPreKeys();
+    await waitForRequestKeys()
+    const to = myContacts[registrationId + 123];
+    console.log(to);
+    await sendMessageToServer("Hi Fag", to);
+    await getMessagesFromServer(to);
+});
